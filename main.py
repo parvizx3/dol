@@ -7,8 +7,8 @@ import hashlib
 BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
 DEST_CHANNEL = os.getenv("DEST_CHANNEL")
 SOURCE_URL = os.getenv("SOURCE_URL")  # e.g. https://t.me/s/publicchannelusername
-BLACKLIST = [w.strip().lower() for w in os.getenv("BLACKLIST", "").split(",") if w.strip()]
-WHITELIST = [w.strip().lower() for w in os.getenv("WHITELIST", "").split(",") if w.strip()]
+BLACKLIST = [w.strip().lower() for w in os.getenv("BLACKLIST", "").split("|") if w.strip()]
+WHITELIST = [w.strip().lower() for w in os.getenv("WHITELIST", "").split("|") if w.strip()]
 SENT_HASH_FILE = "sent_hashes.txt"
 # === Load sent hashes ===
 if os.path.exists(SENT_HASH_FILE):
