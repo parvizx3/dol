@@ -1,12 +1,15 @@
 import os
 import re
 import requests
-import time
 from bs4 import BeautifulSoup
 import hashlib
-from datetime import datetime
 # === Config ===
 BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
+DEST_CHANNEL = os.getenv("DEST_CHANNEL")
+SOURCE_URL = os.getenv("SOURCE_URL")  # e.g. https://t.me/s/publicchannelusername
+BLACKLIST = [w.strip().lower() for w in os.getenv("BLACKLIST", "").split(",") if w.strip()]
+WHITELIST = [w.strip().lower() for w in os.getenv("WHITELIST", "").split(",") if w.strip()]
+SENT_HASH_FILE = "sent_hashes.txt"
 # === Load sent hashes ===
 if os.path.exists(SENT_HASH_FILE):
     with open(SENT_HASH_FILE, "r") as f:
@@ -33,19 +36,14 @@ def get_messages_from_web(url):
     res = requests.get(url)
     soup = BeautifulSoup(res.text, 'html.parser')
     messages = []
-    message_elements = []
-    
+    msg_divs = []
     for msg_div in soup.select('.tgme_widget_message_text'):
-        # Store the raw element for hashing
-        element_str = str(msg_div)
+        msg_divs.append(str(msg_div))
         text = msg_div.get_text(separator="\n").strip()
-        
         if text:
             cleaned = clean_message(text)
-            # Store both the element and cleaned text
-            messages.append((element_str, cleaned))
-    
-    return messages
+            messages.append(cleaned)
+    return messages, msg_divs
 def send_message_to_channel(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {
@@ -56,27 +54,26 @@ def send_message_to_channel(text):
     }
     response = requests.post(url, data=data)
     return response.ok
-def get_hash(element):
-    return hashlib.sha256(element.encode()).hexdigest()
+def get_hash(text):
+    return hashlib.sha256(text.encode()).hexdigest()
 # === Run ===
-messages = get_messages_from_web(SOURCE_URL)
+messages, divs = get_messages_from_web(SOURCE_URL)
 #messages.reverse()  # Send in correct order
 new_hashes = []
-for element_str, msg_text in messages:
-    # Hash the entire element instead of just the text
-    element_hash = get_hash(element_str)
-    
-    if element_hash in sent_hashes:
+i=0
+for msg in messages:
+    msg_hash = get_hash(divs[i])
+    if msg_hash in sent_hashes:
         continue
-        
-    if not is_blacklisted(msg_text) and is_whitelisted(msg_text):
-        if send_message_to_channel(msg_text):
-            print(f"✅ Sent: {msg_text[:50]}...")
-            new_hashes.append(element_hash)
+    if not is_blacklisted(msg) and is_whitelisted(msg):
+        if send_message_to_channel(msg):
+            print(f"✅ Sent: {msg[:50]}...")
+            new_hashes.append(msg_hash)
         else:
-            print(f"❌ Failed to send: {msg_text[:50]}")
+            print(f"❌ Failed to send: {msg[:50]}")
     else:
-        print(f"⏭️ Skipped (filtered): {msg_text[:50]}")
+        print(f"⏭️ Skipped (filtered): {msg[:50]}")
+    i += 1
 # Save new hashes
 if new_hashes:
     with open(SENT_HASH_FILE, "a") as f:
