@@ -37,7 +37,7 @@ def clean_message(text):
     # Remove line breaks between emoji/symbols/numbers/words
     # Example: "⏳\n83,400\nخــرید" → "⏳ 83,400 خــرید"
     text = re.sub(r'(?<=\S)\n(?=\S)', ' ', text)
-
+    text = text.replace("\n", "")
     return text.strip()
 
 def get_messages_from_web(url):
