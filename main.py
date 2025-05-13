@@ -67,7 +67,7 @@ def get_hash(text):
 
 # === Run ===
 messages = get_messages_from_web(SOURCE_URL)
-messages.reverse()  # Send in correct order
+#messages.reverse()  # Send in correct order
 
 new_hashes = []
 
