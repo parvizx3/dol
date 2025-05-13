@@ -59,7 +59,6 @@ def get_hash(text):
 # === Run ===
 messages, divs = get_messages_from_web(SOURCE_URL)
 #messages.reverse()  # Send in correct order
-new_hashes = []
 i=0
 for msg in messages:
     msg_hash = get_hash(divs[i])
@@ -68,14 +67,10 @@ for msg in messages:
     if not is_blacklisted(msg) and is_whitelisted(msg):
         if send_message_to_channel(msg):
             print(f"✅ Sent: {msg[:50]}...")
-            new_hashes.append(msg_hash)
+            with open(SENT_HASH_FILE, "a") as f:
+                f.write(msg_hash + "\n")
         else:
             print(f"❌ Failed to send: {msg[:50]}")
     else:
         print(f"⏭️ Skipped (filtered): {msg[:50]}")
     i += 1
-# Save new hashes
-if new_hashes:
-    with open(SENT_HASH_FILE, "a") as f:
-        for h in new_hashes:
-            f.write(h + "\n")
