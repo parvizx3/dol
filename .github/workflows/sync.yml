@@ -1,28 +1,28 @@
 name: Telegram Sync
-
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '*/5 * * * *'  # Run every 5 minutes
+  workflow_dispatch:        # Allow manual triggering
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-
+    # Add permissions block to grant write access to the repository
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          persist-credentials: true  # Needed to push changes
-
+        
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
+          
       - name: Install dependencies
         run: pip install -r requirements.txt
-
+        
       - name: Run Telegram sync
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
@@ -33,15 +33,13 @@ jobs:
         run: |
           if [ ! -f sent_hashes.txt ]; then touch sent_hashes.txt; fi
           python main.py
-
+          
       - name: Commit and push sent_hashes.txt
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+        # Use the built-in GITHUB_TOKEN instead of a custom PAT
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/parvizx3/dol"
           git add sent_hashes.txt
           git commit -m "chore: update sent_hashes [skip ci]" || echo "No changes to commit"
           git push
-
+        # The default token already has the right permissions with the permissions block above
