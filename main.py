@@ -39,24 +39,23 @@ def get_messages_from_web(url):
     res = requests.get(url)
     soup = BeautifulSoup(res.text, 'html.parser')
     messages = []
-    msg_divs = []
+    msg_links = []  # Now stores message URLs instead of HTML
     
-    # Loop through each message bubble element
     for msg_bubble in soup.select('.tgme_widget_message_bubble'):
-        # Save the raw HTML of the message bubble
-        msg_divs.append(str(msg_bubble))
+        # Extract message URL from the date link
+        date_link = msg_bubble.select_one('.tgme_widget_message_footer a.tgme_widget_message_date')
+        message_url = date_link['href'] if date_link else None
+        msg_links.append(message_url)
         
-        # Find the message text element using the correct selector method
+        # Extract message text (original functionality)
         msg_text_element = msg_bubble.select_one('.tgme_widget_message_text')
-        
-        if msg_text_element:  # Check if text element exists
-            # Extract and clean text
+        if msg_text_element:
             text = msg_text_element.get_text(separator="\n").strip()
             if text:
-                cleaned = clean_message(text)  # Ensure clean_message is defined
+                cleaned = clean_message(text)  # Your existing cleaning function
                 messages.append(cleaned)
     
-    return messages, msg_divs
+    return messages, msg_links
 def send_message_to_channel(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {
