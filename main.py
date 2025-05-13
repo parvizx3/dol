@@ -44,6 +44,7 @@ def get_messages_from_web(url):
     for msg_bubble in soup.select('.tgme_widget_message_bubble'):
         # Extract message URL from the date link
         date_link = msg_bubble.select_one('.tgme_widget_message_footer a.tgme_widget_message_date')
+        print(date_link)
         message_url = date_link['href'] if date_link else None
         msg_links.append(message_url)
         
