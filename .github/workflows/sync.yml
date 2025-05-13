@@ -31,4 +31,5 @@ jobs:
         SOURCE_CHANNEL: ${{ secrets.SOURCE_CHANNEL }}
         DEST_CHANNEL: ${{ secrets.DEST_CHANNEL }}
         BLACKLIST: ${{ secrets.BLACKLIST }}
+        WHITELIST: ${{ secrets.WHITELIST }}
       run: python main.py
