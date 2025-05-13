@@ -30,6 +30,16 @@ def is_whitelisted(text):
         return True
     return any(word in text.lower() for word in WHITELIST)
 
+def clean_message(text):
+    # Collapse multiple line breaks
+    text = re.sub(r'\n+', '\n', text)
+
+    # Remove line breaks between emoji/symbols/numbers/words
+    # Example: "⏳\n83,400\nخــرید" → "⏳ 83,400 خــرید"
+    text = re.sub(r'(?<=\S)\n(?=\S)', ' ', text)
+
+    return text.strip()
+
 def get_messages_from_web(url):
     res = requests.get(url)
     soup = BeautifulSoup(res.text, 'html.parser')
@@ -37,7 +47,8 @@ def get_messages_from_web(url):
     for msg_div in soup.select('.tgme_widget_message_text'):
         text = msg_div.get_text(separator="\n").strip()
         if text:
-            messages.append(text)
+            cleaned = clean_message(text)
+            messages.append(cleaned)
     return messages
 
 def send_message_to_channel(text):
@@ -46,6 +57,7 @@ def send_message_to_channel(text):
         "chat_id": DEST_CHANNEL,
         "text": text,
         "disable_web_page_preview": True,
+        "disable_notification": True  # 🔕 Silent message
     }
     response = requests.post(url, data=data)
     return response.ok
