@@ -33,17 +33,29 @@ def clean_message(text):
     text = text.replace("\n", "")
     return text.strip()
 def get_messages_from_web(url):
+    import requests
+    from bs4 import BeautifulSoup
+
     res = requests.get(url)
     soup = BeautifulSoup(res.text, 'html.parser')
     messages = []
     msg_divs = []
-    for msg_div in soup.select('.tgme_widget_message_bubble'):
-        msg_divs.append(str(msg_div))
-        msg_div = msg_div.find('.tgme_widget_message_text')
-        text = msg_div.get_text(separator="\n").strip()
-        if text:
-            cleaned = clean_message(text)
-            messages.append(cleaned)
+    
+    # Loop through each message bubble element
+    for msg_bubble in soup.select('.tgme_widget_message_bubble'):
+        # Save the raw HTML of the message bubble
+        msg_divs.append(str(msg_bubble))
+        
+        # Find the message text element using the correct selector method
+        msg_text_element = msg_bubble.select_one('.tgme_widget_message_text')
+        
+        if msg_text_element:  # Check if text element exists
+            # Extract and clean text
+            text = msg_text_element.get_text(separator="\n").strip()
+            if text:
+                cleaned = clean_message(text)  # Ensure clean_message is defined
+                messages.append(cleaned)
+    
     return messages, msg_divs
 def send_message_to_channel(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
