@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          persist-credentials: true  # Needed to push changes
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -20,12 +22,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Download previous sent_hashes.txt
-        uses: actions/download-artifact@v4
-        with:
-          name: sent-hashes
-        continue-on-error: true
 
       - name: Run Telegram sync
         env:
@@ -38,8 +34,10 @@ jobs:
           if [ ! -f sent_hashes.txt ]; then touch sent_hashes.txt; fi
           python main.py
 
-      - name: Upload sent_hashes.txt for next run
-        uses: actions/upload-artifact@v4
-        with:
-          name: sent-hashes
-          path: sent_hashes.txt
+      - name: Commit and push sent_hashes.txt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sent_hashes.txt
+          git commit -m "chore: update sent_hashes [skip ci]" || echo "No changes to commit"
+          git push
