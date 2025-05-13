@@ -72,8 +72,8 @@ def get_hash(text):
 # === Run ===
 messages, divs = get_messages_from_web(SOURCE_URL)
 #messages.reverse()  # Send in correct order
-i=0
-for msg in messages:
+for i in range(messages):
+    msg = messages[i]
     msg_hash = get_hash(divs[i])
     if msg_hash in sent_hashes:
         continue
@@ -86,4 +86,3 @@ for msg in messages:
             print(f"❌ Failed to send: {msg[:50]}")
     else:
         print(f"⏭️ Skipped (filtered): {msg[:50]}")
-    i += 1
