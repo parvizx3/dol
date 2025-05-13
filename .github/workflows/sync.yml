@@ -1,8 +1,8 @@
-name: Sync Telegram Channel
+name: Telegram Sync
 
 on:
   schedule:
-    - cron: '*/10 * * * *' # every 10 minutes
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,27 +10,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-    - name: Run sync script
-      env:
-        TG_API_ID: ${{ secrets.TG_API_ID }}
-        TG_API_HASH: ${{ secrets.TG_API_HASH }}
-        TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-        SOURCE_CHANNEL: ${{ secrets.SOURCE_CHANNEL }}
-        DEST_CHANNEL: ${{ secrets.DEST_CHANNEL }}
-        BLACKLIST: ${{ secrets.BLACKLIST }}
-        WHITELIST: ${{ secrets.WHITELIST }}
-        SOURCE_URL: ${{ secrets.SOURCE_URL }}
-      run: python main.py
+      - name: Download previous sent_hashes.txt
+        uses: actions/download-artifact@v4
+        with:
+          name: sent-hashes
+        continue-on-error: true
+
+      - name: Run Telegram sync
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          DEST_CHANNEL: ${{ secrets.DEST_CHANNEL }}
+          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+          BLACKLIST: ${{ secrets.BLACKLIST }}
+          WHITELIST: ${{ secrets.WHITELIST }}
+        run: |
+          if [ ! -f sent_hashes.txt ]; then touch sent_hashes.txt; fi
+          python main.py
+
+      - name: Upload sent_hashes.txt for next run
+        uses: actions/upload-artifact@v4
+        with:
+          name: sent-hashes
+          path: sent_hashes.txt
