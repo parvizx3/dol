@@ -72,7 +72,7 @@ def get_hash(text):
 # === Run ===
 messages, divs = get_messages_from_web(SOURCE_URL)
 #messages.reverse()  # Send in correct order
-for i in range(messages):
+for i in range(len(messages)):
     msg = messages[i]
     msg_hash = get_hash(divs[i])
     if msg_hash in sent_hashes:
