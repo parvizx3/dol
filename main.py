@@ -37,7 +37,7 @@ def get_messages_from_web(url):
     soup = BeautifulSoup(res.text, 'html.parser')
     messages = []
     msg_divs = []
-    for msg_div in soup.select('.tgme_widget_message'):
+    for msg_div in soup.select('.tgme_widget_message_bubble'):
         msg_divs.append(str(msg_div))
         msg_div = msg_div.find('.tgme_widget_message_text')
         text = msg_div.get_text(separator="\n").strip()
