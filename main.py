@@ -1,52 +1,80 @@
 import os
 import re
-from telethon import TelegramClient
-from telethon.tl.functions.messages import GetHistoryRequest
+import requests
+from bs4 import BeautifulSoup
+import hashlib
 
-# Load from environment variables
-api_id = int(os.getenv("TG_API_ID"))
-api_hash = os.getenv("TG_API_HASH")
-bot_token = os.getenv("TG_BOT_TOKEN")
-source_channel = os.getenv("SOURCE_CHANNEL")
-destination_channel = os.getenv("DEST_CHANNEL")
-blacklist = [w.strip().lower() for w in os.getenv("BLACKLIST", "").split(",") if w.strip()]
-whitelist = [w.strip().lower() for w in os.getenv("WHITELIST", "").split(",") if w.strip()]
+# === Config ===
+BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
+DEST_CHANNEL = os.getenv("DEST_CHANNEL")
+SOURCE_URL = os.getenv("SOURCE_URL")  # e.g. https://t.me/s/publicchannelusername
+BLACKLIST = [w.strip().lower() for w in os.getenv("BLACKLIST", "").split(",") if w.strip()]
+WHITELIST = [w.strip().lower() for w in os.getenv("WHITELIST", "").split(",") if w.strip()]
+SENT_HASH_FILE = "sent_hashes.txt"
 
-client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
+# === Load sent hashes ===
+if os.path.exists(SENT_HASH_FILE):
+    with open(SENT_HASH_FILE, "r") as f:
+        sent_hashes = set(line.strip() for line in f if line.strip())
+else:
+    sent_hashes = set()
 
-def contains_url(text: str) -> bool:
+def contains_url(text):
     return bool(re.search(r'http[s]?://|t\.me', text))
 
-def is_blacklisted(text: str) -> bool:
-    return any(word in text.lower() for word in blacklist) or contains_url(text)
+def is_blacklisted(text):
+    return any(word in text.lower() for word in BLACKLIST) or contains_url(text)
 
-def is_whitelisted(text: str) -> bool:
-    if not whitelist:
-        return True  # If no whitelist is set, allow everything
-    return any(word in text.lower() for word in whitelist)
+def is_whitelisted(text):
+    if not WHITELIST:
+        return True
+    return any(word in text.lower() for word in WHITELIST)
 
-async def sync():
-    print(f"Checking messages from {source_channel}")
-    entity = await client.get_entity(source_channel)
-    result = await client(GetHistoryRequest(
-        peer=entity,
-        limit=10,
-        offset_date=None,
-        offset_id=0,
-        max_id=0,
-        min_id=0,
-        add_offset=0,
-        hash=0
-    ))
+def get_messages_from_web(url):
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, 'html.parser')
+    messages = []
+    for msg_div in soup.select('.tgme_widget_message_text'):
+        text = msg_div.get_text(separator="\n").strip()
+        if text:
+            messages.append(text)
+    return messages
 
-    for message in reversed(result.messages):
-        if hasattr(message, 'message') and message.message:
-            text = message.message
-            if not is_blacklisted(text) and is_whitelisted(text):
-                await client.send_message(destination_channel, text)
-                print(f"Sent: {text[:30]}...")
-            else:
-                print(f"Skipped: {text[:30]}...")
+def send_message_to_channel(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {
+        "chat_id": DEST_CHANNEL,
+        "text": text,
+        "disable_web_page_preview": True,
+    }
+    response = requests.post(url, data=data)
+    return response.ok
 
-with client:
-    client.loop.run_until_complete(sync())
+def get_hash(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+# === Run ===
+messages = get_messages_from_web(SOURCE_URL)
+messages.reverse()  # Send in correct order
+
+new_hashes = []
+
+for msg in messages:
+    msg_hash = get_hash(msg)
+    if msg_hash in sent_hashes:
+        continue
+
+    if not is_blacklisted(msg) and is_whitelisted(msg):
+        if send_message_to_channel(msg):
+            print(f"✅ Sent: {msg[:50]}...")
+            new_hashes.append(msg_hash)
+        else:
+            print(f"❌ Failed to send: {msg[:50]}")
+    else:
+        print(f"⏭️ Skipped (filtered): {msg[:50]}")
+
+# Save new hashes
+if new_hashes:
+    with open(SENT_HASH_FILE, "a") as f:
+        for h in new_hashes:
+            f.write(h + "\n")
